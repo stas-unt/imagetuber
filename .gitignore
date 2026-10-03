@@ -1,8 +1,6 @@
-# Ignoring python cache
+# Игнорируем кэш программ
 __pycache__/
-
-# Ignoring Kate cache
 *.kate-swp
 
-# Ignoring config
+# Игнорируем ненужные файлы
 /config.toml
