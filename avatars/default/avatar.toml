@@ -1,0 +1,9 @@
+[main]
+name = "Default"
+author = "stas_unt"
+provides_emotions = false
+emotions = ["normal"]
+
+[faces]
+normal_closed = "faces/normal/mouth_closed.png"
+normal_open = "faces/normal/mouth_open.png"

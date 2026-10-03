@@ -1,0 +1,8 @@
+# Ignoring python cache
+__pycache__/
+
+# Ignoring Kate cache
+*.kate-swp
+
+# Ignoring config
+/config.toml
