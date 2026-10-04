@@ -1,8 +1,6 @@
 import sys
 import signal
-from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QMessageBox, QDialog,
-								QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QDoubleSpinBox
-)
+from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QDoubleSpinBox, QTabWidget, QTextEdit, QWidget)
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import QTimer, Qt
 
@@ -123,6 +121,89 @@ class SettingsDialog(QDialog):
 		super().accept()
 
 
+class AboutDialog(QDialog):
+	"""Диалог 'О программе'"""
+
+	def __init__(self, parent=None):
+		super().__init__(parent)
+		self.setWindowTitle(f"О программе - {APP_NAME}")
+		self.setMinimumSize(500, 400)
+
+		layout = QVBoxLayout(self)
+
+		tabs = QTabWidget()
+
+		about_widget = QWidget()
+		about_layout = QVBoxLayout(about_widget)
+
+		about_label = QLabel()
+		about_label.setWordWrap(True)
+		about_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+		about_label.setTextFormat(Qt.RichText)
+		about_label.setText(
+			f"<h2>{APP_NAME}</h2>"
+			f"<p><b>Версия:</b> {APP_VERSION}</p>"
+			f"<p>{APP_DESCRIPTION}</p>"
+			f"<p><b>Автор:</b> stas_unt</p>"
+		)
+		about_layout.addWidget(about_label)
+		tabs.addTab(about_widget, "О программе")
+
+		licenses_widget = QWidget()
+		licenses_layout = QVBoxLayout(licenses_widget)
+
+		licenses_text = QTextEdit()
+		licenses_text.setReadOnly(True)
+		licenses_text.setPlainText(
+			"ImageTuber использует следующие библиотеки с открытым исходным кодом:\n\n"
+			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+			"PySide6 (Qt for Python)\n"
+			"Лицензия: GNU Lesser General Public License v3.0 (LGPL-3.0)\n"
+			"Copyright © 2026 The Qt Company Ltd.\n"
+			"https://www.qt.io/\n\n"
+
+			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+			"sounddevice\n"
+			"Лицензия: MIT License\n"
+			"Copyright © 2015-2026 Matthias Geier\n"
+			"https://python-sounddevice.readthedocs.io/\n\n"
+
+			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+			"NumPy\n"
+			"Лицензия: BSD 3-Clause License\n"
+			"Copyright © 2005-2026 NumPy Developers\n"
+			"https://numpy.org/\n\n"
+
+			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+			"tomli (для чтения TOML в Python < 3.11)\n"
+			"Лицензия: MIT License\n"
+			"Copyright © 2021 Taneli Hukkinen\n"
+			"https://github.com/hukkin/tomli\n\n"
+
+			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+			"tomli-w (для записи TOML)\n"
+			"Лицензия: MIT License\n"
+			"Copyright © 2021 Taneli Hukkinen\n"
+			"https://github.com/hukkin/tomli-w\n\n"
+
+			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+			"Полные тексты лицензий доступны по ссылкам выше или в репозиториях проектов."
+		)
+		licenses_layout.addWidget(licenses_text)
+		tabs.addTab(licenses_widget, "Лицензии")
+
+		layout.addWidget(tabs)
+
+		button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+		button_box.accepted.connect(self.accept)
+		layout.addWidget(button_box)
+
 class ImageTuberApp:
 
 
@@ -200,13 +281,8 @@ class ImageTuberApp:
 			self.avatar_window.reload_package()
 
 	def _show_about(self):
-		QMessageBox.about(
-			None,
-			f"О программе {APP_NAME}",
-			f"<h3>{APP_NAME} {APP_VERSION}</h3>"
-			f"<p>{APP_DESCRIPTION}</p>"
-			f"<p>Автор: stas_unt<p/>"
-		)
+		dialog = AboutDialog()
+		dialog.exec()
 
 	def _quit(self):
 		print(f"\n[Main] Завершение работы...")

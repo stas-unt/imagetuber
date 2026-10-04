@@ -4,3 +4,5 @@ __pycache__/
 
 # Игнорируем ненужные файлы
 /config.toml
+venv/
+/venv/

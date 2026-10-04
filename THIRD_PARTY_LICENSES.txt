@@ -1,0 +1,40 @@
+	ImageTuber использует следующие библиотеки с открытым исходным кодом:
+
+	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+	PySide6 (Qt for Python)
+	Лицензия: GNU Lesser General Public License v3.0 (LGPL-3.0)
+	Copyright © 2026 The Qt Company Ltd.
+	https://www.qt.io/
+
+	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+	sounddevice
+	Лицензия: MIT License
+	Copyright © 2015-2026 Matthias Geier
+	https://python-sounddevice.readthedocs.io/
+
+	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+	NumPy
+	Лицензия: BSD 3-Clause License
+	Copyright © 2005-2026 NumPy Developers
+	https://numpy.org/
+
+	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+	tomli (для чтения TOML в Python < 3.11)
+	Лицензия: MIT License
+	Copyright © 2021 Taneli Hukkinen
+	https://github.com/hukkin/tomli
+
+	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+	tomli-w (для записи TOML)
+	Лицензия: MIT License
+	Copyright © 2021 Taneli Hukkinen
+	https://github.com/hukkin/tomli-w
+
+	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+	Полные тексты лицензий доступны по ссылкам выше или в репозиториях проектов.
