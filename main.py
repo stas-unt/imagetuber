@@ -1,5 +1,7 @@
 import sys
 import signal
+import pdb
+from pathlib import Path
 from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QDoubleSpinBox, QTabWidget, QTextEdit, QWidget)
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import QTimer, Qt
@@ -14,6 +16,7 @@ from avatar_package import list_available_packages
 APP_NAME = "ImageTuber"
 APP_VERSION = "0.2.0"
 APP_DESCRIPTION = "Виртуальный аватар, которому не требуется камера. Только микрофон."
+ICON_PATH = Path("res/img/icon.png")
 
 
 class SettingsDialog(QDialog):
@@ -47,6 +50,38 @@ class SettingsDialog(QDialog):
 		h1.addWidget(self.device_combo)
 		layout.addLayout(h1)
 
+		h_sample_rate = QHBoxLayout()
+		h_sample_rate.addWidget(QLabel("Частота дискретизации:"))
+
+		self.sample_rate_combo = QComboBox()
+		sr_values = ["16000", "22050", "44100", "48000"]
+		self.sample_rate_combo.addItems(sr_values)
+		curr_sr = str(settings.get("audio", "sample_rate"))
+		self.sample_rate_combo.setCurrentText(curr_sr)
+		self.sample_rate_combo.setToolTip(
+			"Указывает частоту дискретизации звука.\n\n"
+			"Если не уверены, оставьте 22050."
+		)
+
+		h_sample_rate.addWidget(self.sample_rate_combo)
+		layout.addLayout(h_sample_rate)
+
+		h_block_size = QHBoxLayout()
+		h_block_size.addWidget(QLabel("Размер блока"))
+
+		self.bs_combo = QComboBox()
+		bs_values = ["256", "512", "1024"]
+		self.bs_combo.addItems(bs_values)
+		curr_bs = str(settings.get("audio", "block_size"))
+		self.bs_combo.setCurrentText(curr_bs)
+		self.bs_combo.setToolTip(
+			"Указывает размер блока аудио для обработки\n\n"
+			"Если не уверены, оставьте 512"
+		)
+
+		h_block_size.addWidget(self.bs_combo)
+		layout.addLayout(h_block_size)
+
 		h2 = QHBoxLayout()
 		h2.addWidget(QLabel("Порог тишины:"))
 		self.threshold_spin = QDoubleSpinBox()
@@ -54,8 +89,41 @@ class SettingsDialog(QDialog):
 		self.threshold_spin.setSingleStep(0.005)
 		self.threshold_spin.setDecimals(3)
 		self.threshold_spin.setValue(settings.get("audio", "silence_threshold"))
+		self.threshold_spin.setToolTip(
+			"Порог громкости в нормализованных единицах.\n"
+			"Это среднеквадратичное значение (RMS) амплитуды звука.\n"
+			"0.0 - полная тишина, 1.0 - максимальная громкость.\n\n"
+			"Если не уверены, используйте автокалибровку громкости."
+		)
 		h2.addWidget(self.threshold_spin)
+
+		self.calibrate_btn = QPushButton("Авто")
+		self.calibrate_btn.setToolTip(
+			"Автоматически определить порог тишины.\n"
+			"Программа прослушает 3 секунды тишины и\n"
+			"установит порог на ее основе."
+		)
+		self.calibrate_btn.clicked.connect(self._calibrate)
+		h2.addWidget(self.calibrate_btn)
+
 		layout.addLayout(h2)
+
+		h_cal = QHBoxLayout()
+		h_cal.addWidget(QLabel("Коэффициэнт калибровки:"))
+		self.cal_multiplier_spin = QDoubleSpinBox()
+		self.cal_multiplier_spin.setRange(1.0, 5.0)
+		self.cal_multiplier_spin.setSingleStep(0.1)
+		self.cal_multiplier_spin.setDecimals(1)
+		self.cal_multiplier_spin.setValue(settings.get("audio", "calibration_multiplier"))
+		self.cal_multiplier_spin.setToolTip(
+			"Множитель для автокалибровки.\n"
+			"Порог = средний шум * коэффициент\n\n"
+			"2.0 - порог в 2 раза выше шума (рекомендуется)\n"
+			"3.0 - более агрессивная фильтрация\n\n"
+			"Если не уверены, оставьте 2.0"
+		)
+		h_cal.addWidget(self.cal_multiplier_spin)
+		layout.addLayout(h_cal)
 
 		h3 = QHBoxLayout()
 		h3.addWidget(QLabel("Гистерезис:"))
@@ -69,7 +137,7 @@ class SettingsDialog(QDialog):
 			"Рот закрывается, когда громкость падает ниже\n"
 			"Порог тишины * гистерезис\n\n"
 			"Чем меньше значение, тем резче закрывается рот.\n\n"
-			"Рекомендуемое значение: 0.7"
+			"Если не уверены, оставьте 0.7"
 		)
 		h3.addWidget(self.hyst_spin)
 		layout.addLayout(h3)
@@ -104,14 +172,35 @@ class SettingsDialog(QDialog):
 		btn_layout.addWidget(btn_cancel)
 		layout.addLayout(btn_layout)
 
+	def _calibrate(self):
+		self.calibrate_btn.setEnabled(False)
+		self.calibrate_btn.setText("Калибрую...")
+		QApplication.processEvents()
+
+		try:
+			temp_thread = AudioThread(self.settings)
+			new_threshold = temp_thread.calibrate(duration=3.0)
+
+			self.threshold_spin.setValue(new_threshold)
+			print(f"[AudioThread(Calibrate)] Новый порог: {new_threshold}")
+
+		except Exception as e:
+			print(f"[AudioThread(Calibrate)] Ошибка калибровки: {e}")
+		finally:
+			self.calibrate_btn.setEnabled(True)
+			self.calibrate_btn.setText("Авто")
+
 	def accept(self):
 		# Сохраняем выбранное устройство
 		selected_device = self.device_combo.currentText()
 		self.settings.set("audio", "device", selected_device)
 
 		# Сохраняем порог и гистерезис
+		self.settings.set("audio", "sample_rate", int(self.sample_rate_combo.currentText()))
+		self.settings.set("audio", "block_size", int(self.bs_combo.currentText()))
 		self.settings.set("audio", "silence_threshold", self.threshold_spin.value())
 		self.settings.set("audio", "hysteresis", self.hyst_spin.value())
+		self.settings.set("audio", "calibration_multiplier", self.cal_multiplier_spin.value())
 
 		# Сохраняем выбранный пакет лиц
 		selected_package = self.package_combo.currentText()
@@ -165,10 +254,10 @@ class AboutDialog(QDialog):
 
 			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
-			"sounddevice\n"
-			"Лицензия: MIT License\n"
-			"Copyright © 2015-2026 Matthias Geier\n"
-			"https://python-sounddevice.readthedocs.io/\n\n"
+			"soundcard\n"
+            "Лицензия: MIT License\n"
+            "Copyright © 2017 Bastian Bechtold\n"
+            "https://github.com/bastibe/python-soundcard\n\n"
 
 			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -213,6 +302,8 @@ class ImageTuberApp:
 		self.app = QApplication(sys.argv)
 		self.app.setQuitOnLastWindowClosed(False)
 
+		if ICON_PATH.exists():
+			self.app.setWindowIcon(QIcon(str(ICON_PATH)))
 
 		self.timer = QTimer()
 		self.timer.start(500)
@@ -228,12 +319,13 @@ class ImageTuberApp:
 	def _setup_tray(self):
 		self.tray = QSystemTrayIcon()
 
-		icon_path = AVATARS_DIR / self.settings.get("avatar", "package") / "faces" / "normal" / "mouth_closed.png"
-		icon = QIcon(QPixmap(icon_path))
-		if icon.isNull():
-			icon = self.app.style().standartIcon(self.app.style().SP_ComputerIcon)
+		if ICON_PATH.exists():
+			self.tray.setIcon(QIcon(str(ICON_PATH)))
+		else:
+			icon_path = AVATARS_DIR / self.settings.get("avatar", "package") / "faces" / "normal" / "mouth_closed.png"
+			icon = QIcon(QPixmap(icon_path))
+			self.tray.setIcon(icon)
 
-		self.tray.setIcon(icon)
 		self.tray.setToolTip(APP_NAME)
 		self.tray.setVisible(True)
 
@@ -262,7 +354,7 @@ class ImageTuberApp:
 		self.audio_thread.speaking_changed.connect(self.avatar_window.set_speaking)
 		print("[Main] Запуск потока аудио...")
 		self.audio_thread.start()
-		print(f"[Main] Поток аудио запущен, isRunning={self.audio_thread.isRunning()}")
+		print(f"[Main] Аудио-поток запущен, isRunning={self.audio_thread.isRunning()}")
 
 	def _restart_audio(self):
 		"""Перезапуск аудио-потока после изменение настроек"""

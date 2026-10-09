@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
 		"block_size": 1024,
 		"silence_threshold": 0.02,
 		"hysteresis": 0.7,
+		"calibration_multiplier": 2.0,
 	},
 	"avatar": {
 		"package": "default",

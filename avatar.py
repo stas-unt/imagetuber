@@ -13,13 +13,16 @@ class AvatarWindow(QWidget):
 	def __init__(self, settings):
 		super().__init__()
 		self.settings = settings
+		self.package: AvatarPackage | None = None
 
 		self.setWindowFlags(
-			Qt.Window | Qt.FramelessWindowHint |
-			Qt.WindowStaysOnTopHint | Qt.Tool
+			Qt.Window | Qt.FramelessWindowHint | Qt.Tool
 		)
 		self.setAttribute(Qt.WA_TranslucentBackground)
-		self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+		icon_path = Path("res/img/icon.png")
+		if icon_path.exists():
+			self.setWindowIcon(QIcon(str(icon_path)))
 
 		self.label = QLabel(self)
 		self.label.setScaledContents(True)
