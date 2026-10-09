@@ -14,7 +14,7 @@ from avatar_package import list_available_packages
 
 
 APP_NAME = "ImageTuber"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 APP_DESCRIPTION = "Виртуальный аватар, которому не требуется камера. Только микрофон."
 ICON_PATH = Path("res/img/icon.png")
 
