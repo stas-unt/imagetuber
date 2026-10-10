@@ -1,9 +1,11 @@
 [main]
 name = "Default"
 author = "stas_unt"
-provides_emotions = false
+provides_emotions = true
 emotions = ["normal"]
 
 [faces]
 normal_closed = "faces/normal/mouth_closed.png"
 normal_open = "faces/normal/mouth_open.png"
+eyes_closed = "faces/eyes_closed.png"
+eyes_open = "faces/eyes_open.png"

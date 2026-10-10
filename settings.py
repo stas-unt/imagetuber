@@ -22,6 +22,8 @@ DEFAULT_CONFIG = {
 	},
 	"avatar": {
 		"package": "default",
+		"blink_interval": 6.0,
+		"blink_duration": 0.15,
 	},
 }
 

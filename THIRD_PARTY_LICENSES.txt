@@ -9,15 +9,15 @@
 
 	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-	sounddevice
-	Лицензия: MIT License
-	Copyright © 2015-2026 Matthias Geier
-	https://python-sounddevice.readthedocs.io/
+	soundcard
+	Лицензия: BSD-3-Clause
+	Copyright © 2016 Matthias Geier
+	https://github.com/bastibe/SoundCard
 
 	━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 	NumPy
-	Лицензия: BSD 3-Clause License
+	Лицензия: BSD-3-Clause License
 	Copyright © 2005-2026 NumPy Developers
 	https://numpy.org/
 

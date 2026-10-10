@@ -1,5 +1,6 @@
 import sys
 import signal
+import logging
 import pdb
 from pathlib import Path
 from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QMessageBox, QDialog, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QDoubleSpinBox, QTabWidget, QTextEdit, QWidget)
@@ -12,9 +13,11 @@ from audio import AudioThread, get_audio_input_devices
 from avatar import AvatarWindow
 from avatar_package import list_available_packages
 
+# logger initialization
+
 
 APP_NAME = "ImageTuber"
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 APP_DESCRIPTION = "Виртуальный аватар, которому не требуется камера. Только микрофон."
 ICON_PATH = Path("res/img/icon.png")
 
@@ -161,6 +164,34 @@ class SettingsDialog(QDialog):
 		h4.addWidget(self.package_combo)
 		layout.addLayout(h4)
 
+		h_eyes_blinking = QHBoxLayout()
+		h_eyes_blinking.addWidget(QLabel("Интервал мограния (сек.):"))
+		self.blink_interval_spin = QDoubleSpinBox()
+		self.blink_interval_spin.setRange(1.0, 30.0)
+		self.blink_interval_spin.setSingleStep(0.5)
+		self.blink_interval_spin.setDecimals(1)
+		self.blink_interval_spin.setValue(settings.get("avatar", "blink_interval"))
+		self.blink_interval_spin.setToolTip(
+			"Как часто моргает аватар\n\n"
+			"Если не уверены, выберите 3-5 секунд"
+		)
+		h_eyes_blinking.addWidget(self.blink_interval_spin)
+		layout.addLayout(h_eyes_blinking)
+
+		h_blinking_duration = QHBoxLayout()
+		h_blinking_duration.addWidget(QLabel("Длительность моргания (сек.):"))
+		self.blink_duration_spin = QDoubleSpinBox()
+		self.blink_duration_spin.setRange(0.05, 0.5)
+		self.blink_duration_spin.setSingleStep(0.05)
+		self.blink_duration_spin.setDecimals(2)
+		self.blink_duration_spin.setValue(settings.get("avatar", "blink_duration"))
+		self.blink_duration_spin.setToolTip(
+			"Как долго глаза остаются закрытыми при моргании\n\n"
+			"Если не уверены, выберите 0.1 секунду"
+		)
+		h_blinking_duration.addWidget(self.blink_duration_spin)
+		layout.addLayout(h_blinking_duration)
+
 		# --- Кнопки ---
 		btn_layout = QHBoxLayout()
 		btn_save = QPushButton("Сохранить")
@@ -191,20 +222,20 @@ class SettingsDialog(QDialog):
 			self.calibrate_btn.setText("Авто")
 
 	def accept(self):
-		# Сохраняем выбранное устройство
+		# Сохраняем параметры категории 'Аудио'
 		selected_device = self.device_combo.currentText()
 		self.settings.set("audio", "device", selected_device)
-
-		# Сохраняем порог и гистерезис
 		self.settings.set("audio", "sample_rate", int(self.sample_rate_combo.currentText()))
 		self.settings.set("audio", "block_size", int(self.bs_combo.currentText()))
 		self.settings.set("audio", "silence_threshold", self.threshold_spin.value())
 		self.settings.set("audio", "hysteresis", self.hyst_spin.value())
 		self.settings.set("audio", "calibration_multiplier", self.cal_multiplier_spin.value())
 
-		# Сохраняем выбранный пакет лиц
+		# Сохраняем параметры категории 'Аватар'
 		selected_package = self.package_combo.currentText()
 		self.settings.set("avatar", "package", selected_package)
+		self.settings.set("avatar", "blink_interval", self.blink_interval_spin.value())
+		self.settings.set("avatar", "blink_duration", self.blink_duration_spin.value())
 
 		self.settings.save()
 		super().accept()
@@ -255,9 +286,9 @@ class AboutDialog(QDialog):
 			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
 			"soundcard\n"
-            "Лицензия: MIT License\n"
-            "Copyright © 2017 Bastian Bechtold\n"
-            "https://github.com/bastibe/python-soundcard\n\n"
+			"Лицензия: MIT License\n"
+			"Copyright © 2017 Bastian Bechtold\n"
+			"https://github.com/bastibe/SoundCard\n\n"
 
 			"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -330,20 +361,43 @@ class ImageTuberApp:
 		self.tray.setVisible(True)
 
 		# Меню
-		menu = QMenu()
+		self.tray_menu = QMenu()
+		self._build_tray_menu()
+		self.tray.setContextMenu(self.tray_menu)
 
-		action_settings = menu.addAction("Настройки")
+	def _build_tray_menu(self):
+		"""Строит меню трея"""
+		self.tray_menu.clear()
+
+		emotions_menu = self.tray_menu.addMenu("Эмоции")
+
+		if self.avatar_window:
+			emotions = self.avatar_window.get_emotions()
+			current_emotion = self.avatar_window.current_emotion
+
+			for emotion in emotions:
+				action = emotions_menu.addAction(emotion.capitalize())
+				action.setCheckable(True)
+				action.setChecked(emotion == current_emotion)
+				action.triggered.connect(lambda checked, e=emotion: self._set_emotion(e))
+
+		self.tray_menu.addSeparator()
+
+		action_settings = self.tray_menu.addAction("Настройки")
 		action_settings.triggered.connect(self._open_settings)
 
-		action_about = menu.addAction("О программе")
+		action_about = self.tray_menu.addAction("О программе")
 		action_about.triggered.connect(self._show_about)
 
-		menu.addSeparator()
+		self.tray_menu.addSeparator()
 
-		action_quit = menu.addAction("Выход")
+		action_quit = self.tray_menu.addAction("Выход")
 		action_quit.triggered.connect(self._quit)
 
-		self.tray.setContextMenu(menu)
+	def _set_emotion(self, emotion: str):
+		if self.avatar_window:
+			self.avatar_window.set_emotion(emotion)
+			self._build_tray_menu()
 
 	def _start_avatar(self):
 		"""Запускаем окно аватара и аудио-поток."""
