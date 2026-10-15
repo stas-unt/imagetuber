@@ -12,6 +12,7 @@ from settings import Settings, AVATARS_DIR
 from audio import AudioThread, get_audio_input_devices
 from avatar import AvatarWindow
 from avatar_package import list_available_packages
+from logs import logger
 
 # logger initialization
 
@@ -213,10 +214,10 @@ class SettingsDialog(QDialog):
 			new_threshold = temp_thread.calibrate(duration=3.0)
 
 			self.threshold_spin.setValue(new_threshold)
-			print(f"[AudioThread(Calibrate)] Новый порог: {new_threshold}")
+			logger.info(f"[AudioThread(Calibrate)] Новый порог: {new_threshold}")
 
 		except Exception as e:
-			print(f"[AudioThread(Calibrate)] Ошибка калибровки: {e}")
+			logger.error(f"[AudioThread(Calibrate)] Ошибка калибровки: {e}")
 		finally:
 			self.calibrate_btn.setEnabled(True)
 			self.calibrate_btn.setText("Авто")
@@ -325,10 +326,12 @@ class AboutDialog(QDialog):
 		layout.addWidget(button_box)
 
 class ImageTuberApp:
-
+	"""Main class"""
 
 	def __init__(self):
 		signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+		logger.info(f"Запуск {APP_NAME} v{APP_VERSION}")
 
 		self.app = QApplication(sys.argv)
 		self.app.setQuitOnLastWindowClosed(False)
@@ -344,8 +347,8 @@ class ImageTuberApp:
 		self.audio_thread = None
 		self.avatar_window = None
 
-		self._setup_tray()
 		self._start_avatar()
+		self._setup_tray()
 
 	def _setup_tray(self):
 		self.tray = QSystemTrayIcon()
@@ -367,13 +370,17 @@ class ImageTuberApp:
 
 	def _build_tray_menu(self):
 		"""Строит меню трея"""
-		self.tray_menu.clear()
+		self.tray_menu = QMenu()
 
 		emotions_menu = self.tray_menu.addMenu("Эмоции")
 
 		if self.avatar_window:
 			emotions = self.avatar_window.get_emotions()
 			current_emotion = self.avatar_window.current_emotion
+			logger.debug(f"[Tray] - Доступные эмоции: {emotions}, текущая эмоция: {current_emotion}")
+
+			if not emotions:
+				emotions_menu.setEnabled(False)
 
 			for emotion in emotions:
 				action = emotions_menu.addAction(emotion.capitalize())
@@ -394,6 +401,8 @@ class ImageTuberApp:
 		action_quit = self.tray_menu.addAction("Выход")
 		action_quit.triggered.connect(self._quit)
 
+		self.tray.setContextMenu(self.tray_menu)
+
 	def _set_emotion(self, emotion: str):
 		if self.avatar_window:
 			self.avatar_window.set_emotion(emotion)
@@ -406,9 +415,9 @@ class ImageTuberApp:
 
 		self.audio_thread = AudioThread(self.settings)
 		self.audio_thread.speaking_changed.connect(self.avatar_window.set_speaking)
-		print("[Main] Запуск потока аудио...")
+		logger.info("[Main] Запуск потока аудио...")
 		self.audio_thread.start()
-		print(f"[Main] Аудио-поток запущен, isRunning={self.audio_thread.isRunning()}")
+		logger.info(f"[Main] Аудио-поток запущен, isRunning={self.audio_thread.isRunning()}")
 
 	def _restart_audio(self):
 		"""Перезапуск аудио-потока после изменение настроек"""

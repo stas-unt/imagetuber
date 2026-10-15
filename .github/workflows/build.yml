@@ -1,0 +1,122 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:  # Для ручного запуска
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: vtuber-avatar-linux
+            archive_ext: tar.gz
+          - os: windows-latest
+            artifact_name: vtuber-avatar-windows
+            archive_ext: zip
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: 📦 Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
+
+      - name: 📦 Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: 🔨 Build with PyInstaller
+        run: |
+          pyinstaller --noconfirm --onedir --windowed --name "VtuberAvatar" main.py
+
+      - name: 📂 Copy resources to dist folder
+        shell: bash
+        run: |
+          # Создаём директории, если их нет
+          mkdir -p dist/VtuberAvatar/avatars
+          mkdir -p dist/VtuberAvatar/res
+
+          # Копируем файлы, если они существуют в репозитории
+          if [ -d "avatars" ]; then
+            cp -r avatars/* dist/VtuberAvatar/avatars/ 2>/dev/null || true
+          fi
+
+          if [ -d "res" ]; then
+            cp -r res/* dist/VtuberAvatar/res/ 2>/dev/null || true
+          fi
+
+          if [ -f "THIRD_PARTY_LICENSES.txt" ]; then
+            cp THIRD_PARTY_LICENSES.txt dist/VtuberAvatar/
+          fi
+
+          if [ -f "LICENSE" ]; then
+            cp LICENSE dist/VtuberAvatar/
+          fi
+
+          # Создаём README для пользователей
+          cat > dist/VtuberAvatar/README.txt << 'EOF'
+          VTuber Avatar - Виртуальная камера без веб-камеры
+
+          Использование:
+          1. Положите ваши аватары в папку "avatars/"
+          2. Положите ресурсы в папку "res/"
+          3. Запустите VtuberAvatar (или VtuberAvatar.exe на Windows)
+
+          Подробнее: https://github.com/[твой_ник]/[название_репы]
+          EOF
+
+      - name: 📦 Archive artifact (Linux)
+        if: runner.os != 'Windows'
+        run: |
+          cd dist
+          tar -czf ../${{ matrix.artifact_name }}.${{ matrix.archive_ext }} VtuberAvatar
+          cd ..
+
+      - name: 📦 Archive artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\VtuberAvatar -DestinationPath ${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
+
+      - name: 📤 Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.${{ matrix.archive_ext }}
+
+  release:
+    name: 🚀 Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 📝 Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

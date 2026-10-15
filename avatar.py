@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, QTimer
 
 from settings import Settings, AVATARS_DIR
 from avatar_package import AvatarPackage, Emotion, list_available_packages
+from logs import logger
 
 
 class AvatarWindow(QWidget):
@@ -62,16 +63,17 @@ class AvatarWindow(QWidget):
 		if not self.package:
 			if packages:
 				self.package = packages[0]
-				print(f"[AvatarWindow] Пакет '{package_name}' не найден, "
+				logger.warning(f"[AvatarWindow] Пакет '{package_name}' не найден, "
 						f"использую '{self.package.name}'")
 			else:
+				logger.error(f"Не найдено ни одного пакета аватаров в {AVATARS_DIR}")
 				raise FileNotFoundError(
 					f"Не найдено ни одного пакета аватаров в {AVATARS_DIR}"
 				)
 
-		print(f"[AvatarWindow] Загружен пакет: {self.package.name} "
+		logger.info(f"[AvatarWindow] Загружен пакет: {self.package.name} "
 				f"(автор: {self.package.author})")
-		print(f"[AvatarWindow] Доступные эмоции: {list(self.package.emotions.keys())}")
+		logger.debug(f"[AvatarWindow] Доступные эмоции: {list(self.package.emotions.keys())}")
 
 		if "normal" in self.package.emotions:
 			self.current_emotion = "normal"
@@ -100,9 +102,9 @@ class AvatarWindow(QWidget):
 
 		if self.package and self.package.eyes_open and self.package.eyes_closed:
 			self.blink_timer.start(int(interval * 1000))
-			print(f"[AvatarWindow] Моргание включено: каждые {interval} секунд")
+			logger.info(f"[AvatarWindow] Моргание включено: каждые {interval} секунд")
 		else:
-			print(f"[AvatarWindow] Моргание отключено (нет изображений для глаз)")
+			logger.info(f"[AvatarWindow] Моргание отключено (нет изображений для глаз)")
 
 	def _blink(self):
 		if self.package and self.package.eyes_closed:
@@ -122,7 +124,7 @@ class AvatarWindow(QWidget):
 	def set_emotion(self, emotion_name: str):
 		if self.package and emotion_name in self.package.emotions:
 			self.current_emotion = emotion_name
-			print(f"[AvatarWindow] Эмоция: {emotion_name}")
+			logger.info(f"[AvatarWindow] Эмоция: {emotion_name}")
 			self._update_display()
 
 	def reload_package(self):

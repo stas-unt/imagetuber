@@ -2,7 +2,7 @@ import tomllib
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
-
+from logs import logger
 
 @dataclass
 class Emotion:
@@ -28,14 +28,14 @@ class AvatarPackage:
 		toml_path = package_dir / "avatar.toml"
 
 		if not toml_path.exists():
-			print(f"[AvatarPackage] Не найден avatar.toml в {package_dir}")
+			logger.debug(f"[AvatarPackage] Не найден avatar.toml в {package_dir}")
 			return None
 
 		try:
 			with open(toml_path, "rb") as f:
 				data = tomllib.load(f)
 		except Exception as e:
-			print(f"[AvatarPackage] Ошибка загрузки {toml_path}: {e}")
+			logger.error(f"[AvatarPackage] Ошибка загрузки {toml_path}: {e}")
 			return None
 
 		main = data.get("main", {})
@@ -43,7 +43,7 @@ class AvatarPackage:
 
 		# Проверяем обязательные поля
 		if "name" not in main:
-			print(f"[AvatarPackage] Отсутствует name в {toml_path}")
+			logger.error(f"[AvatarPackage] Отсутствует name в {toml_path}")
 			return None
 
 		emotions_dict = {}
@@ -54,14 +54,14 @@ class AvatarPackage:
 			open_key = f"{emotion_name}_open"
 
 			if closed_key not in faces or open_key not in faces:
-				print(f"[AvatarPackage] Отсутствуют файлы для эмоции '{emotion_name}'")
+				logger.warning(f"[AvatarPackage] Отсутствуют файлы для эмоции '{emotion_name}'")
 				continue
 
 			closed_path = package_dir / faces[closed_key]
 			open_path = package_dir / faces[open_key]
 
 			if not closed_path.exists() or not open_path.exists():
-				print(f"[AvatarPackage] Файлы не найдены для эмоции '{emotion_name}'")
+				logger.warning(f"[AvatarPackage] Файлы не найдены для эмоции '{emotion_name}'")
 				continue
 
 			emotions_dict[emotion_name] = Emotion(
@@ -71,7 +71,7 @@ class AvatarPackage:
 			)
 
 		if not emotions_dict:
-			print(f"[AvatarPackage] Не найдено ни одной эмоции в {package_dir}")
+			logger.error(f"[AvatarPackage] Не найдено ни одной эмоции в {package_dir}")
 			return None
 
 		eyes_open = None

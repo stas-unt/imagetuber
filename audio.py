@@ -3,6 +3,8 @@ import soundcard as sc
 import pdb
 from PySide6.QtCore import QThread, Signal
 
+from logs import logger
+
 class AudioThread(QThread):
 	speaking_changed = Signal(bool)
 	calibration_done = Signal(float)
@@ -26,15 +28,15 @@ class AudioThread(QThread):
 			if self.device_name.lower() in m.name.lower():
 				return m
 
-		print(f"[AudioThread] Устройство '{self.device_name}' не найдено, "
+		logger.warning(f"[AudioThread] Устройство '{self.device_name}' не найдено, "
 				f"используем микрофон по-умолчанию")
 		return sc.default_microphone()
 
 	def calibrate(self, duration: float = 3.0) -> float:
-		print(f"[AudioThread] Калибровка, слушаю {duration} секунд тишины...")
+		logger.info(f"[AudioThread] Калибровка, слушаю {duration} секунд тишины...")
 
 		mic = self._find_mic()
-		print(f"[AudioThread] Используем устройство {mic.name}")
+		logger.debug(f"[AudioThread] Используем устройство {mic.name}")
 
 		rms_values = []
 		num_blocks = int(duration * self.sample_rate / self.block_size)
@@ -47,9 +49,9 @@ class AudioThread(QThread):
 					data = rec.record(numframes=self.block_size)
 				rms = np.sqrt(np.mean(data ** 2))
 				rms_values.append(rms)
-				print(f"[AudioThread] Калибровка: блок {i+1}/{num_blocks}, RMS={rms:.4f}")
+				logger.debug(f"[AudioThread] Калибровка: блок {i+1}/{num_blocks}, RMS={rms:.4f}")
 		except Exception as e:
-			print(f"[AudioThread] Ошибка калибровки: {e}")
+			logger.error(f"[AudioThread] Ошибка калибровки: {e}")
 			if not rms_values:
 				return self.silence_threshold
 
@@ -59,17 +61,17 @@ class AudioThread(QThread):
 		avg_noise = float(np.median(rms_values))
 		new_threshold = avg_noise * self.calibration_multiplier
 
-		print(f"[AudioThread] Средний уровень шума: {avg_noise:.4f}")
-		print(f"[AudioThread] Новый порог: {new_threshold:.4f} "
+		logger.info(f"[AudioThread] Средний уровень шума: {avg_noise:.4f}")
+		logger.info(f"[AudioThread] Новый порог: {new_threshold:.4f} "
 				f"(шум * {self.calibration_multiplier})")
 
 		return new_threshold
 
 	def run(self):
-		print(f"[AudioThread] started, device={self.device_name}")
+		logger.info(f"[AudioThread] started, device={self.device_name}")
 
 		self.mic = self._find_mic()
-		print(f"[AudioThread] Используется устройство '{self.mic.name}' как источник звука")
+		logger.debug(f"[AudioThread] Используется устройство '{self.mic.name}' как источник звука")
 
 		is_speaking = False
 
@@ -89,7 +91,7 @@ class AudioThread(QThread):
 						is_speaking = False
 						self.speaking_changed.emit(False)
 		except Exception as e:
-			print(f"[AudioThread] Ошибка: {e}")
+			logger.error(f"[AudioThread] Ошибка: {e}")
 
 	def stop(self):
 		self._running = False
