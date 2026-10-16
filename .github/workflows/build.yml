@@ -15,10 +15,10 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: vtuber-avatar-linux
+            artifact_name: imagetuber-linux
             archive_ext: tar.gz
           - os: windows-latest
-            artifact_name: vtuber-avatar-windows
+            artifact_name: imagetuber-windows
             archive_ext: zip
 
     steps:
